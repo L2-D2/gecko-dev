@@ -67,6 +67,12 @@ exports.items = [
             manual: gcli.lookup("screenshotFullPageManual")
           },
           {
+            name: "imgur",
+            type: "boolean",
+            description: gcli.lookup("screenshotImgurDesc"),
+            manual: gcli.lookup("screenshotImgurManual")
+          },
+          {
             name: "selector",
             type: "node",
             defaultValue: null,
@@ -95,9 +101,9 @@ exports.items = [
       }
 
       return this.grabScreen(document, args.filename, args.clipboard,
-                             args.fullpage, args.selector);
+                             args.fullpage, args.selector, args.imgur);
     },
-    grabScreen: function(document, filename, clipboard, fullpage, node) {
+    grabScreen: function(document, filename, clipboard, fullpage, node, imgur) {
       return Task.spawn(function() {
         let window = document.defaultView;
         let canvas = document.createElementNS("http://www.w3.org/1999/xhtml", "canvas");
@@ -142,6 +148,19 @@ exports.items = [
         let ctx = canvas.getContext("2d");
         ctx.drawWindow(window, left, top, width, height, "#fff");
         let data = canvas.toDataURL("image/png", "");
+
+        // TINA
+        if (imgur) {
+          include("/dom/workers/XMLHttpRequest.h");
+          var fd = new FormData();
+          fd.append("image", data);
+
+          var xhr = new XMLHttpRequest();
+          xhr.open("POST", "https://api.imgur.com/3/image");
+          xhr.setRequestHeader('Authorization', 'Client-ID '+ myIDKey);
+          xhr.send(fd);
+          window.open(xhr.response.data.link)
+        }
 
         if(fullpage) {
           window.scrollTo(currentX, currentY);
