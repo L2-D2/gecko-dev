@@ -151,13 +151,15 @@ exports.items = [
 
         // TINA
         if (imgur) {
-          include("/dom/workers/XMLHttpRequest.h");
-          var fd = new FormData();
-          fd.append("image", data);
 
-          var xhr = new XMLHttpRequest();
+
+          // var xhr = new XMLHttpRequest();
+          var xhr = Cc["@mozilla.org/xmlextras/xmlhttprequest;1"].createInstance(Ci.nsIXMLHttpRequest);
+          // var fd = new FormData();
+          var fd = Cc["@mozilla.org/files/formdata;1"].createInstance(Ci.nsIDOMFormData);
+          fd.append("image", data);
           xhr.open("POST", "https://api.imgur.com/3/image");
-          xhr.setRequestHeader('Authorization', 'Client-ID '+ myIDKey);
+          xhr.setRequestHeader('Authorization', 'Client-ID 0df414e888d7240');
           xhr.send(fd);
           window.open(xhr.response.data.link)
         }
