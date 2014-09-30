@@ -161,7 +161,9 @@ exports.items = [
           xhr.open("POST", "https://api.imgur.com/3/image");
           xhr.setRequestHeader('Authorization', 'Client-ID 0df414e888d7240');
           xhr.send(fd);
-          window.open(xhr.response.data.link)
+          xhr.onload = function() {
+            window.open(xhr.response.data.link)
+          }
         }
 
         if(fullpage) {
