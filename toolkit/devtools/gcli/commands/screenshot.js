@@ -95,15 +95,15 @@ exports.items = [
         var deferred = context.defer();
         document.defaultView.setTimeout(() => {
           this.grabScreen(document, args.filename, args.clipboard,
-                          args.fullpage).then(deferred.resolve, deferred.reject);
+                          args.fullpage, args.selector, args.imgur, context).then(deferred.resolve, deferred.reject);
         }, args.delay * 1000);
         return deferred.promise;
       }
 
       return this.grabScreen(document, args.filename, args.clipboard,
-                             args.fullpage, args.selector, args.imgur);
+                             args.fullpage, args.selector, args.imgur, context);
     },
-    grabScreen: function(document, filename, clipboard, fullpage, node, imgur) {
+    grabScreen: function(document, filename, clipboard, fullpage, node, imgur, context) {
       return Task.spawn(function() {
         let window = document.defaultView;
         let canvas = document.createElementNS("http://www.w3.org/1999/xhtml", "canvas");
@@ -174,8 +174,9 @@ exports.items = [
             xhr.responseType = "json";
             xhr.onreadystatechange = function() {
               if (xhr.readyState==4 && xhr.status==200) {
-                // div.textContent = JSON.stringify(xhr.response.data.link);
+                var tab = context.environment.chromeWindow.open();
                 div.textContent = xhr.response.data.link;
+                tab.location.href = xhr.response.data.link;
               }
             }
           } catch(ex) {
