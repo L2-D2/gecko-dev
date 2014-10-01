@@ -151,19 +151,30 @@ exports.items = [
 
         // TINA
         if (imgur) {
+          try {
+            div.textContent = "Uploading to Imgur... maybe..."
+            // var xhr = new XMLHttpRequest();
+            var xhr = Cc["@mozilla.org/xmlextras/xmlhttprequest;1"].createInstance(Ci.nsIXMLHttpRequest);
+            // var fd = new FormData();
+            var fd = Cc["@mozilla.org/files/formdata;1"].createInstance(Ci.nsIDOMFormData);
+            fd.append("image", ctx);
+            fd.append("type", "base64");
+            fd.append("name", filename);
+            xhr.open("POST", "https://api.imgur.com/3/image");
+            xhr.setRequestHeader('Authorization', 'Client-ID 0df414e888d7240');
+            xhr.send(fd);
+            xhr.onreadystatechange = function() {
+              if (xhr.readyState==4 && xhr.status==200) {
+                // div.textContent = JSON.stringify(xhr.response.data.link);
+                div.textContent = xhr.response.data.link;
+              } else {
+                div.textContent = xhr.response;
+              }
+            }
+          } catch(ex) {
+            div.textContent = gcli.lookup("screenshotErrorCopying");
+          } throw new Task.Result(div);
 
-
-          // var xhr = new XMLHttpRequest();
-          var xhr = Cc["@mozilla.org/xmlextras/xmlhttprequest;1"].createInstance(Ci.nsIXMLHttpRequest);
-          // var fd = new FormData();
-          var fd = Cc["@mozilla.org/files/formdata;1"].createInstance(Ci.nsIDOMFormData);
-          fd.append("image", data);
-          xhr.open("POST", "https://api.imgur.com/3/image");
-          xhr.setRequestHeader('Authorization', 'Client-ID 0df414e888d7240');
-          xhr.send(fd);
-          xhr.onload = function() {
-            window.open(xhr.response.data.link)
-          }
         }
 
         if(fullpage) {
