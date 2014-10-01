@@ -149,33 +149,6 @@ exports.items = [
         ctx.drawWindow(window, left, top, width, height, "#fff");
         let data = canvas.toDataURL("image/png", "");
 
-        // TINA
-        if (imgur) {
-          try {
-            div.textContent = "Uploading to Imgur... maybe..."
-            // var xhr = new XMLHttpRequest();
-            var xhr = Cc["@mozilla.org/xmlextras/xmlhttprequest;1"].createInstance(Ci.nsIXMLHttpRequest);
-            // var fd = new FormData();
-            var fd = Cc["@mozilla.org/files/formdata;1"].createInstance(Ci.nsIDOMFormData);
-            fd.append("image", ctx);
-            fd.append("type", "base64");
-            fd.append("name", filename);
-            xhr.open("POST", "https://api.imgur.com/3/image");
-            xhr.setRequestHeader('Authorization', 'Client-ID 0df414e888d7240');
-            xhr.send(fd);
-            xhr.onreadystatechange = function() {
-              if (xhr.readyState==4 && xhr.status==200) {
-                // div.textContent = JSON.stringify(xhr.response.data.link);
-                div.textContent = xhr.response.data.link;
-              } else {
-                div.textContent = xhr.response;
-              }
-            }
-          } catch(ex) {
-            div.textContent = gcli.lookup("screenshotErrorCopying");
-          } throw new Task.Result(div);
-
-        }
 
         if(fullpage) {
           window.scrollTo(currentX, currentY);
@@ -185,6 +158,31 @@ exports.items = [
                                   .QueryInterface(Ci.nsIInterfaceRequestor)
                                   .getInterface(Ci.nsIWebNavigation)
                                   .QueryInterface(Ci.nsILoadContext);
+
+        // TINA
+        if (imgur) {
+          try {
+            var xhr = Cc["@mozilla.org/xmlextras/xmlhttprequest;1"].createInstance(Ci.nsIXMLHttpRequest);
+            var fd = Cc["@mozilla.org/files/formdata;1"].createInstance(Ci.nsIDOMFormData);
+            fd.append("image", data.split(',')[1]);
+            fd.append("type", "base64");
+            fd.append("title", filename);
+            xhr.open("POST", "https://api.imgur.com/3/image");
+            xhr.setRequestHeader('Authorization', 'Client-ID 0df414e888d7240');
+            xhr.send(fd);
+            div.textContent = gcli.lookup("screenshotImgurUploading");
+            xhr.responseType = "json";
+            xhr.onreadystatechange = function() {
+              if (xhr.readyState==4 && xhr.status==200) {
+                // div.textContent = JSON.stringify(xhr.response.data.link);
+                div.textContent = xhr.response.data.link;
+              }
+            }
+          } catch(ex) {
+            div.textContent = gcli.lookup("screenshotImgurError");
+          } throw new Task.Result(div);
+
+        }
 
         if (clipboard) {
           try {
@@ -220,6 +218,7 @@ exports.items = [
         }
 
         let file = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
+
 
         // Create a name for the file if not present
         if (filename == FILENAME_DEFAULT_VALUE) {
