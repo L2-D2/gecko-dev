@@ -212,7 +212,7 @@ exports.items = [
                                       [dateString, timeString]) + ".png";
         }
 
-        // Upload imgur desired
+        // Upload to imgur if desired
         if (imgur) {
           try {
             var xhr = Cc["@mozilla.org/xmlextras/xmlhttprequest;1"].createInstance(Ci.nsIXMLHttpRequest);
