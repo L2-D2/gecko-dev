@@ -6,6 +6,8 @@
 
 const { Cc, Ci, Cu } = require("chrome");
 const gcli = require("gcli/index");
+const { Services } = require("resource://gre/modules/Services.jsm");
+
 
 loader.lazyImporter(this, "Downloads", "resource://gre/modules/Downloads.jsm");
 loader.lazyImporter(this, "LayoutHelpers", "resource://gre/modules/devtools/LayoutHelpers.jsm");
@@ -220,11 +222,16 @@ exports.items = [
             fd.append("image", data.split(',')[1]);
             fd.append("type", "base64");
             fd.append("title", filename);
-            xhr.open("POST", "https://api.imgur.com/3/image");
-            xhr.setRequestHeader('Authorization', 'Client-ID 0df414e888d7240');
+
+            var postURL = Services.prefs.getCharPref("devtools.gcli.imgurUploadURL");
+            var clientID = 'Client-ID ' + Services.prefs.getCharPref("devtools.gcli.imgurClientID");
+            xhr.open("POST", postURL);
+            xhr.setRequestHeader('Authorization', clientID);
             xhr.send(fd);
-            div.textContent = gcli.lookup("screenshotImgurUploading");
             xhr.responseType = "json";
+
+            div.textContent = gcli.lookup("screenshotImgurUploading");
+
             xhr.onreadystatechange = function() {
               if (xhr.readyState==4 && xhr.status==200) {
                 var tab = context.environment.chromeWindow.open();
