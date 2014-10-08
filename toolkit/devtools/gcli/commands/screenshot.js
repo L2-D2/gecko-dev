@@ -107,6 +107,9 @@ exports.items = [
     },
     grabScreen: function(document, filename, clipboard, fullpage, node, imgur, context) {
       return Task.spawn(function() {
+        //check for default save to file functionality
+        let saveToFile = (!imgur && !clipboard);
+
         let window = document.defaultView;
         let canvas = document.createElementNS("http://www.w3.org/1999/xhtml", "canvas");
         let left = 0;
@@ -116,6 +119,35 @@ exports.items = [
         let div = document.createElementNS("http://www.w3.org/1999/xhtml", "div");
         let currentX = window.scrollX;
         let currentY = window.scrollY;
+
+        var makeDiv = function(destinations) {
+          //clear the div
+          div.textContent = "";
+
+          destinations.forEach(function(destination) {
+            div.textContent += destination;
+          });
+
+          div.addEventListener("click", function openFile() {
+            div.removeEventListener("click", openFile);
+            if (saveToFile){
+              file.reveal();
+            } else if (imgur) {
+              var tab = context.environment.chromeWindow.open();
+              tab.location.href = xhr.response.data.link;
+            }
+          });
+          div.style.cursor = "pointer";
+          let image = document.createElement("div");
+          let previewHeight = parseInt(256*height/width);
+          image.setAttribute("style",
+                            "width:256px; height:" + previewHeight + "px;" +
+                            "max-height: 256px;" +
+                            "background-image: url('" + data + "');" +
+                            "background-size: 256px " + previewHeight + "px;" +
+                            "margin: 4px; display: block");
+          div.appendChild(image);
+        };
 
         if (fullpage) {
           // Bug 961832: GCLI screenshot shows fixed position element in wrong
@@ -161,6 +193,7 @@ exports.items = [
                                   .getInterface(Ci.nsIWebNavigation)
                                   .QueryInterface(Ci.nsILoadContext);
 
+        var destinations = [];
 
         if (clipboard) {
           try {
@@ -187,13 +220,13 @@ exports.items = [
             let clipid = Ci.nsIClipboard;
             let clip = Cc["@mozilla.org/widget/clipboard;1"].getService(clipid);
             clip.setData(trans, null, clipid.kGlobalClipboard);
-            div.textContent = gcli.lookup("screenshotCopied");
+            destinations.push(gcli.lookup("screenshotCopied"));
+            makeDiv(destinations);
           }
           catch (ex) {
             div.textContent = gcli.lookup("screenshotErrorCopying");
           }
-          throw new Task.Result(div);
-        }
+        } //end clipboard
 
         let file = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsILocalFile);
 
@@ -234,64 +267,55 @@ exports.items = [
 
             xhr.onreadystatechange = function() {
               if (xhr.readyState==4 && xhr.status==200) {
-                var tab = context.environment.chromeWindow.open();
-                div.textContent = xhr.response.data.link;
-                tab.location.href = xhr.response.data.link;
+                destinations.push(xhr.response.data.link);
+                makeDiv(destinations);
               }
             }
+
           } catch(ex) {
-            div.textContent = gcli.lookup("screenshotImgurError");
-          } throw new Task.Result(div);
+            if (ex) {
+              div.textContent = gcli.lookup("screenshotImgurError");
+            }
+          }
+        } // end imgur
 
-        }
+        // If not imgur and not clipboard: save to file
+        if (saveToFile) {
+          // Check there is a .png extension to filename
+          if (!filename.match(/.png$/i)) {
+            filename += ".png";
+          }
+          // If the filename is relative, tack it onto the download directory
+          if (!filename.match(/[\\\/]/)) {
+            let preferredDir = yield Downloads.getPreferredDownloadsDirectory();
+            filename = OS.Path.join(preferredDir, filename);
+          }
 
-        // Check there is a .png extension to filename
-        else if (!filename.match(/.png$/i)) {
-          filename += ".png";
-        }
-        // If the filename is relative, tack it onto the download directory
-        if (!filename.match(/[\\\/]/)) {
-          let preferredDir = yield Downloads.getPreferredDownloadsDirectory();
-          filename = OS.Path.join(preferredDir, filename);
-        }
+          try {
+            file.initWithPath(filename);
+          } catch (ex) {
+            div.textContent = gcli.lookup("screenshotErrorSavingToFile") + " " + filename;
+            throw new Task.Result(div);
+          }
 
-        try {
-          file.initWithPath(filename);
-        } catch (ex) {
-          div.textContent = gcli.lookup("screenshotErrorSavingToFile") + " " + filename;
-          throw new Task.Result(div);
-        }
+          let ioService = Cc["@mozilla.org/network/io-service;1"]
+                            .getService(Ci.nsIIOService);
 
-        let ioService = Cc["@mozilla.org/network/io-service;1"]
-                          .getService(Ci.nsIIOService);
+          let Persist = Ci.nsIWebBrowserPersist;
+          let persist = Cc["@mozilla.org/embedding/browser/nsWebBrowserPersist;1"]
+                          .createInstance(Persist);
+          persist.persistFlags = Persist.PERSIST_FLAGS_REPLACE_EXISTING_FILES |
+                                 Persist.PERSIST_FLAGS_AUTODETECT_APPLY_CONVERSION;
 
-        let Persist = Ci.nsIWebBrowserPersist;
-        let persist = Cc["@mozilla.org/embedding/browser/nsWebBrowserPersist;1"]
-                        .createInstance(Persist);
-        persist.persistFlags = Persist.PERSIST_FLAGS_REPLACE_EXISTING_FILES |
-                               Persist.PERSIST_FLAGS_AUTODETECT_APPLY_CONVERSION;
+          let source = ioService.newURI(data, "UTF8", null);
+          persist.saveURI(source, null, null, null, null, file, loadContext);
 
-        let source = ioService.newURI(data, "UTF8", null);
-        persist.saveURI(source, null, null, null, null, file, loadContext);
+          destinations.push(gcli.lookup("screenshotSavedToFile") + " \"" + filename + "\"");
+          makeDiv(destinations);
+        } // end save to file
 
-        div.textContent = gcli.lookup("screenshotSavedToFile") + " \"" + filename +
-                          "\"";
-        div.addEventListener("click", function openFile() {
-          div.removeEventListener("click", openFile);
-          file.reveal();
-        });
-        div.style.cursor = "pointer";
-        let image = document.createElement("div");
-        let previewHeight = parseInt(256*height/width);
-        image.setAttribute("style",
-                          "width:256px; height:" + previewHeight + "px;" +
-                          "max-height: 256px;" +
-                          "background-image: url('" + data + "');" +
-                          "background-size: 256px " + previewHeight + "px;" +
-                          "margin: 4px; display: block");
-        div.appendChild(image);
         throw new Task.Result(div);
-      });
-    }
+      }); //return Task.spawn()
+    } // grabScreen()
   }
-];
+];// exports.items[]
